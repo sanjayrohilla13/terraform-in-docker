@@ -24,7 +24,8 @@ pipeline {
                 }
             }
         }
-        stage('Run Terraform Code') {
+        stage('plan') {
+            when{expression{STAGE_TO_RUN.contains('plan')}}
             steps {
                 echo 'Terraform Code..'
                 script {
@@ -32,33 +33,28 @@ pipeline {
                     terraform version
                     terraform init
                     terraform plan
+                    '''
+                }
+            }
+        }
+        stage('Deploy') {
+            when{expression{STAGE_TO_RUN.contains('deploy')}}
+            steps {
+                echo 'Terraform Code..'
+                script {
+                    sh '''
                     terraform apply --auto-approve
                     '''
                 }
             }
         }
 // plan stage
-        stage('Plan-Base-Infra') {
-            when{expression{STAGE_TO_RUN.contains('plan')}}
+        stage('Destroy') {
+            when{expression{STAGE_TO_RUN.contains('destroy')}}
             steps {
-                withCredentials([aws(accessKeyVariable:'AWS_ACCESS_KEY_ID',credentialsId:'jenkins-aws-user',secretKeyVariable:'AWS_SECRET_ACCESS_KEY')]) {
-                //withAWS(credentials: 'aws-credentials', region: 'ap-southeast-2') {
                     sh '''
-                        echo ${BUCKETNAME}
-                        echo ${KEYNAME}
-                        aws s3 ls
-                        aws s3api head-object \
-							--bucket ${BUCKETNAME} \
-							--key ${KEYNAME} \
-							|| not_exist=true
-							
-                        if [ $not_exist ]; then
-                            echo "Object doesn't exist"
-                        else
-                            echo "Object exists"
-                        fi
+                        terraform destroy --auto-approve
                         '''
-                }  
             }  
         }
     }
