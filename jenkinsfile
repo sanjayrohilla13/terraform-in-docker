@@ -20,7 +20,7 @@ pipeline {
             steps {
                 echo 'Downloading..'
                 script {
-                    git credentialsId: 'sanjayrohilla13', branch: 'master', url: 'hhttps://github.com/sanjayrohilla13/terraform-in-docker.git', poll: false
+                    git credentialsId: 'sanjayrohilla13', branch: 'master', url: 'https://github.com/sanjayrohilla13/terraform-in-docker.git', poll: false
                 }
             }
         }
