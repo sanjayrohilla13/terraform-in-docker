@@ -1,0 +1,63 @@
+def STAGE_TO_RUN =params.STAGE
+pipeline {
+    //agent { label 'AWS'}
+    agent any
+    environment {
+        AWS_DEFAULT_REGION = 'ap-southeast-2'
+        //TEMP_VAR = credentials('srv-ecr-usr')
+        def DOCKER_SOURCE = " "
+    }
+
+    parameters{
+        choice(name: 'ENVIRONMENT', choices: ['dev','prod'], description: 'Select the Environment Name')
+        choice(name: 'DOCKER_SRC', choices: ['ECR','artifactory'], description: 'Source of Sonarqube Docker Source')
+        choice(name: 'STAGE', choices: ['plan','deploy','destroy'], description: 'Terraform Stage to Apply')
+        string(name: 'BUCKETNAME', defaultValue: 'sanjayrohilla', description: 'Enter the name of S3 Bucket')
+        string(name: 'KEYNAME', defaultValue: 'terraform/tfstate.tfstate', description: 'Enter the object name in the S3 Bucket')
+    }
+    stages {
+        stage('Download GIT Hub Repo') {
+            steps {
+                echo 'Downloading..'
+                script {
+                    git credentialsId: 'sanjayrohilla13', branch: 'master', url: 'hhttps://github.com/sanjayrohilla13/terraform-in-docker.git', poll: false
+                }
+            }
+        }
+        stage('Run Terraform Code') {
+            steps {
+                echo 'Terraform Code..'
+                script {
+                    sh '''
+                    docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker:/var/lib/docker -w /data hashicorp/terraform:light version
+                    '''
+                }
+            }
+        }
+// plan stage
+        stage('Plan-Base-Infra') {
+            when{expression{STAGE_TO_RUN.contains('plan')}}
+            steps {
+                withCredentials([aws(accessKeyVariable:'AWS_ACCESS_KEY_ID',credentialsId:'jenkins-aws-user',secretKeyVariable:'AWS_SECRET_ACCESS_KEY')]) {
+                //withAWS(credentials: 'aws-credentials', region: 'ap-southeast-2') {
+                    sh '''
+                        echo ${BUCKETNAME}
+                        echo ${KEYNAME}
+                        aws s3 ls
+                        aws s3api head-object \
+							--bucket ${BUCKETNAME} \
+							--key ${KEYNAME} \
+							|| not_exist=true
+							
+                        if [ $not_exist ]; then
+                            echo "Object doesn't exist"
+                        else
+                            echo "Object exists"
+                        fi
+                        '''
+                }  
+            }  
+        }
+    }
+}
+
