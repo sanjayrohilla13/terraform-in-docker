@@ -29,10 +29,9 @@ pipeline {
                 echo 'Terraform Code..'
                 script {
                     sh '''
-                    alias tform="docker run --rm -v $PWD:/data -w /data hashicorp/terraform:light"
-                    tform version
-                    tform init
-                    tform plan
+                    terraform version
+                    terraform init
+                    terraform plan
                     '''
                 }
             }
